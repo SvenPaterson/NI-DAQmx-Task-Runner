@@ -1,4 +1,4 @@
-﻿# pip install nidaqmx matplotlib
+# pip install nidaqmx matplotlib
 import sys
 import time
 import threading
@@ -68,15 +68,15 @@ UNIT_ABBREVIATIONS: Dict[str, str] = {
     "AMPS": "A",
     "AMPERES": "A",
     "A": "A",
-    "DEG C": "°C",
-    "DEG F": "°F",
+    "DEG C": "Ãƒâ€šÃ‚Â°C",
+    "DEG F": "Ãƒâ€šÃ‚Â°F",
     "DEG K": "K",
-    "DEGREES CELSIUS": "°C",
-    "DEGREES FAHRENHEIT": "°F",
+    "DEGREES CELSIUS": "Ãƒâ€šÃ‚Â°C",
+    "DEGREES FAHRENHEIT": "Ãƒâ€šÃ‚Â°F",
     "DEGREES KELVIN": "K",
     "KELVIN": "K",
-    "CELSIUS": "°C",
-    "FAHRENHEIT": "°F",
+    "CELSIUS": "Ãƒâ€šÃ‚Â°C",
+    "FAHRENHEIT": "Ãƒâ€šÃ‚Â°F",
     "PSI": "psi",
     "PASCALS": "Pa",
     "PA": "Pa",
@@ -90,12 +90,12 @@ UNIT_ABBREVIATIONS: Dict[str, str] = {
     "RPM": "rpm",
     "PERCENT": "%",
     "NEWTONS": "N",
-    "NEWTON_METERS": "N·m",
+    "NEWTON_METERS": "NÃƒâ€šÃ‚Â·m",
     "METERS PER SECOND": "m/s",
-    "METERS PER SECOND SQUARED": "m/s²",
+    "METERS PER SECOND SQUARED": "m/sÃƒâ€šÃ‚Â²",
     "VOLTS PER VOLT": "V/V",
     "COULOMBS": "C",
-    "OHMS": "Ω",
+    "OHMS": "ÃƒÅ½Ã‚Â©",
     "HZ": "Hz",
     "G": "g",
     "STRAIN": "strain",
@@ -117,40 +117,6 @@ UNIT_ALIASES: Dict[str, str] = {
     "METERS PER SECOND^2": "METERS PER SECOND SQUARED",
 }
 
-PREFERRED_UNIT_ATTRS: List[str] = [
-    "ai_pressure_units",
-    "ai_force_units",
-    "ai_torque_units",
-    "ai_displacement_units",
-    "ai_velocity_units",
-    "ai_accel_units",
-    "ai_strain_units",
-    "ai_sound_pressure_units",
-    "ai_voltage_units",
-    "ai_current_units",
-    "ai_resistance_units",
-    "ai_units",
-    "ai_temperature_units",
-    "ai_temp_units",
-]
-
-MEASUREMENT_UNIT_ATTR: Dict[str, str] = {
-    "PRESSURE": "ai_pressure_units",
-    "FORCE": "ai_force_units",
-    "TORQUE": "ai_torque_units",
-    "STRAIN": "ai_strain_units",
-    "ACCEL": "ai_accel_units",
-    "VELOCITY": "ai_velocity_units",
-    "DISPLACEMENT": "ai_displacement_units",
-    "POSITION": "ai_displacement_units",
-    "TEMPERATURE": "ai_temp_units",
-    "VOLTAGE": "ai_voltage_units",
-    "CURRENT": "ai_current_units",
-    "FREQ": "ai_freq_units",
-    "SOUND": "ai_sound_pressure_units",
-    "RESISTANCE": "ai_resistance_units",
-}
-
 def _normalize_unit_name(raw: str) -> str:
     if not raw:
         return ""
@@ -165,61 +131,42 @@ def _normalize_unit_name(raw: str) -> str:
     normalized = " ".join("".join(with_spaces).split())
     return normalized.upper()
 
-
-def _extract_scaled_units(channel) -> str:
-    try:
-        scale = getattr(channel, 'ai_custom_scale')
-    except Exception:
-        return ''
-    try:
-        scaled_units = getattr(scale, 'scaled_units', '')
-    except Exception:
-        scaled_units = ''
-    return str(scaled_units) if scaled_units else ''
-
-def _measurement_hint(channel) -> str:
-    meas = getattr(channel, 'ai_meas_type', None)
-    if meas is None:
-        return ''
-    return str(meas).upper()
+PREFERRED_UNIT_ATTRS: List[str] = [
+    "ai_temperature_units",
+    "ai_pressure_units",
+    "ai_force_units",
+    "ai_displacement_units",
+    "ai_velocity_units",
+    "ai_accel_units",
+    "ai_torque_units",
+    "ai_voltage_units",
+    "ai_current_units",
+    "ai_resistance_units",
+    "ai_strain_units",
+    "ai_sound_pressure_units",
+    "ai_units",
+]
 
 def _channel_unit_label(channel) -> str:
-    scaled_units = _extract_scaled_units(channel)
-    if scaled_units:
-        normalized = _normalize_unit_name(scaled_units)
-        mapped_key = UNIT_ALIASES.get(normalized, normalized)
-        label = UNIT_ABBREVIATIONS.get(mapped_key)
-        if label:
-            return label
-        if mapped_key:
-            return mapped_key.title()
-
-    meas_hint = _measurement_hint(channel)
-    for key, attr in MEASUREMENT_UNIT_ATTR.items():
-        if key in meas_hint:
+    # Prefer custom scale units if defined
+    try:
+        scale_name = getattr(channel, 'ai_custom_scale_name', '')
+        if scale_name:
             try:
-                value = getattr(channel, attr)
-            except AttributeError:
-                value = None
-            if value:
-                raw = value if isinstance(value, str) else getattr(value, 'name', str(value))
-                normalized = _normalize_unit_name(raw)
-                mapped_key = UNIT_ALIASES.get(normalized, normalized)
-                label = UNIT_ABBREVIATIONS.get(mapped_key)
-                if label:
-                    return label
-                if mapped_key.startswith('DEG '):
-                    suffix = mapped_key.split()[-1]
-                    if suffix == 'C':
-                        return '°C'
-                    if suffix == 'F':
-                        return '°F'
-                    if suffix == 'K':
-                        return 'K'
-                if len(mapped_key) <= 4:
-                    return mapped_key.capitalize()
-                return mapped_key.title()
-            break
+                scale = getattr(channel, 'ai_custom_scale')
+                scaled_units = getattr(scale, 'scaled_units', '')
+                if scaled_units:
+                    normalized = _normalize_unit_name(scaled_units)
+                    mapped_key = UNIT_ALIASES.get(normalized, normalized)
+                    label = UNIT_ABBREVIATIONS.get(mapped_key)
+                    if label:
+                        return label
+                    if mapped_key:
+                        return mapped_key.title()
+            except Exception:
+                pass
+    except Exception:
+        pass
 
     for attr in PREFERRED_UNIT_ATTRS:
         try:
@@ -228,72 +175,29 @@ def _channel_unit_label(channel) -> str:
             continue
         if value in (None, ''):
             continue
-        raw = value if isinstance(value, str) else getattr(value, 'name', str(value))
-        if not raw:
-            continue
-        key_upper = str(raw).upper()
-        if key_upper in {'FROM_CUSTOM_SCALE', 'FROM_TEDS'}:
+        raw = getattr(value, 'name', str(value))
+        if not raw or str(raw).upper() in ('FROM_CUSTOM_SCALE', 'FROM_TEDS'):
             continue
         normalized = _normalize_unit_name(raw)
         mapped_key = UNIT_ALIASES.get(normalized, normalized)
         label = UNIT_ABBREVIATIONS.get(mapped_key)
         if label:
             return label
-        if mapped_key.startswith('DEG '):
+        if mapped_key.startswith("DEG "):
             suffix = mapped_key.split()[-1]
-            if suffix == 'C':
-                return '°C'
-            if suffix == 'F':
-                return '°F'
-            if suffix == 'K':
-                return 'K'
+            if suffix == "C":
+                return f"Ãƒâ€šÃ‚Â°C"
+            if suffix == "F":
+                return f"Ãƒâ€šÃ‚Â°F"
+            if suffix == "K":
+                return "K"
         if len(mapped_key) <= 4:
             return mapped_key.capitalize()
         return mapped_key.title()
 
-    return ''
+    return ""
 
-    scaled_units = _extract_scaled_units(channel)
-    if scaled_units:
-        normalized = _normalize_unit_name(scaled_units)
-        mapped_key = UNIT_ALIASES.get(normalized, normalized)
-        label = UNIT_ABBREVIATIONS.get(mapped_key)
-        if label:
-            return label
-        if mapped_key:
-            return mapped_key.title()
-
-    for attr in PREFERRED_UNIT_ATTRS:
-        try:
-            value = getattr(channel, attr)
-        except AttributeError:
-            continue
-        if value in (None, ''):
-            continue
-        raw = value if isinstance(value, str) else getattr(value, 'name', str(value))
-        if not raw:
-            continue
-        key_upper = str(raw).upper()
-        if key_upper in {'FROM_CUSTOM_SCALE', 'FROM_TEDS'}:
-            continue
-        normalized = _normalize_unit_name(raw)
-        mapped_key = UNIT_ALIASES.get(normalized, normalized)
-        label = UNIT_ABBREVIATIONS.get(mapped_key)
-        if label:
-            return label
-        if mapped_key.startswith('DEG '):
-            suffix = mapped_key.split()[-1]
-            if suffix == 'C':
-                return '°C'
-            if suffix == 'F':
-                return '°F'
-            if suffix == 'K':
-                return 'K'
-        if len(mapped_key) <= 4:
-            return mapped_key.capitalize()
-        return mapped_key.title()
-
-    return ''
+    return ""
 
 class AcquisitionApp:
     def __init__(self, root: tk.Tk) -> None:
@@ -570,16 +474,9 @@ class AcquisitionApp:
         cmap = mpl_colormaps.get_cmap(cmap_name)
         if count <= 0:
             return []
-        start_stop_map = {
-            1: (0.45, 0.85),
-            2: (0.45, 0.85),
-            3: (0.45, 0.85),
-        }
-        start, stop = start_stop_map.get(axis_index, (0.25, 0.85))
         if count == 1:
-            sample = (start + stop) / 2.0
-            sample = min(max(sample, 0.0), 1.0)
-            return [mcolors.to_hex(cmap(sample))]
+            return [mcolors.to_hex(cmap(0.6))]
+        start, stop = 0.25, 0.85
         if count == 2:
             samples = [start, stop]
         else:
