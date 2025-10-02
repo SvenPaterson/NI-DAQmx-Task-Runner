@@ -184,6 +184,14 @@ def _measurement_hint(channel) -> str:
     return str(meas).upper()
 
 def _channel_unit_label(channel) -> str:
+    """Extract and format the unit label for a channel.
+    
+    Tries multiple strategies in order:
+    1. Custom scale units
+    2. Measurement-specific unit attributes
+    3. Generic preferred unit attributes
+    """
+    # Strategy 1: Try custom scale units first
     scaled_units = _extract_scaled_units(channel)
     if scaled_units:
         normalized = _normalize_unit_name(scaled_units)
@@ -194,6 +202,7 @@ def _channel_unit_label(channel) -> str:
         if mapped_key:
             return mapped_key.title()
 
+    # Strategy 2: Try measurement-specific unit attributes
     meas_hint = _measurement_hint(channel)
     for key, attr in MEASUREMENT_UNIT_ATTR.items():
         if key in meas_hint:
@@ -221,48 +230,7 @@ def _channel_unit_label(channel) -> str:
                 return mapped_key.title()
             break
 
-    for attr in PREFERRED_UNIT_ATTRS:
-        try:
-            value = getattr(channel, attr)
-        except AttributeError:
-            continue
-        if value in (None, ''):
-            continue
-        raw = value if isinstance(value, str) else getattr(value, 'name', str(value))
-        if not raw:
-            continue
-        key_upper = str(raw).upper()
-        if key_upper in {'FROM_CUSTOM_SCALE', 'FROM_TEDS'}:
-            continue
-        normalized = _normalize_unit_name(raw)
-        mapped_key = UNIT_ALIASES.get(normalized, normalized)
-        label = UNIT_ABBREVIATIONS.get(mapped_key)
-        if label:
-            return label
-        if mapped_key.startswith('DEG '):
-            suffix = mapped_key.split()[-1]
-            if suffix == 'C':
-                return '°C'
-            if suffix == 'F':
-                return '°F'
-            if suffix == 'K':
-                return 'K'
-        if len(mapped_key) <= 4:
-            return mapped_key.capitalize()
-        return mapped_key.title()
-
-    return ''
-
-    scaled_units = _extract_scaled_units(channel)
-    if scaled_units:
-        normalized = _normalize_unit_name(scaled_units)
-        mapped_key = UNIT_ALIASES.get(normalized, normalized)
-        label = UNIT_ABBREVIATIONS.get(mapped_key)
-        if label:
-            return label
-        if mapped_key:
-            return mapped_key.title()
-
+    # Strategy 3: Try generic preferred unit attributes
     for attr in PREFERRED_UNIT_ATTRS:
         try:
             value = getattr(channel, attr)
@@ -533,7 +501,7 @@ class AcquisitionApp:
 
     def _format_value(self, value: Optional[float]) -> str:
         if value is None:
-            return "â€”"
+            return "-"
         magnitude = abs(value)
         if magnitude >= 1000 or (0 < magnitude < 1e-2):
             return f"{value:.3e}"
@@ -553,7 +521,7 @@ class AcquisitionApp:
             for ch_idx in assignments.get(axis_index, []):
                 label = self._channel_label(ch_idx)
                 iid = f"ch{ch_idx}"
-                self.table.insert("", "end", iid=iid, text=label, values=(axis_name, "â€”"))
+                self.table.insert("", "end", iid=iid, text=label, values=(axis_name, "-"))
                 self.table_rows[ch_idx] = iid
                 self.latest_values[ch_idx] = None
 
