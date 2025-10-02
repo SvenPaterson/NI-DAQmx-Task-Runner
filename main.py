@@ -364,7 +364,7 @@ class AcquisitionApp:
             axis_controls,
             state="readonly",
             width=5,
-            values=("1", "2", "3"),
+            values=("1", "2", "3", "4"),
             textvariable=self.axis_count_var,
         )
         self.axis_count_combo.pack(side=tk.LEFT, padx=(8, 0))
@@ -503,11 +503,19 @@ class AcquisitionApp:
         if value is None:
             return "-"
         magnitude = abs(value)
-        if magnitude >= 1000 or (0 < magnitude < 1e-2):
-            return f"{value:.3e}"
-        if magnitude >= 100:
-            return f"{value:,.1f}"
-        return f"{value:,.3f}".rstrip("0").rstrip(".")
+        if magnitude >= 10000:
+            formatted = f"{value:,.0f}"
+        elif magnitude >= 100:
+            formatted = f"{value:,.1f}"
+        elif magnitude >= 1:
+            formatted = f"{value:,.3f}"
+        elif magnitude >= 1e-2:
+            formatted = f"{value:.4f}"
+        elif magnitude >= 1e-4:
+            formatted = f"{value:.6f}"
+        else:
+            formatted = f"{value:.8f}"
+        return formatted.rstrip("0").rstrip(".")
 
     def _refresh_live_table(self, axis_count: int, assignments: Dict[int, List[int]]) -> None:
         if self.table is None:
@@ -542,6 +550,7 @@ class AcquisitionApp:
             1: (0.45, 0.85),
             2: (0.45, 0.85),
             3: (0.45, 0.85),
+            4: (0.45, 0.85),
         }
         start, stop = start_stop_map.get(axis_index, (0.25, 0.85))
         if count == 1:
@@ -582,7 +591,7 @@ class AcquisitionApp:
             self.extra_axes.append(new_axis)
             self.axes.append(new_axis)
 
-        right_margin = max(0.9 - 0.11 * max(0, axis_count - 1), 0.75)
+        right_margin = max(0.9 - 0.11 * max(0, axis_count - 1), 0.65)
         self.figure.subplots_adjust(right=right_margin)
 
     def _style_extra_axis(self, axis: Any) -> None:
